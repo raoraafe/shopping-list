@@ -15,6 +15,10 @@ spl_autoload_register(function ($class) {
     }
 });
 
+function redirect() {
+    header("Location: index.php"); // Redirect to refresh the page
+    exit();
+}
 
 // Instantiate the shopping list with database credentials
 use model\ShoppingList;
@@ -27,14 +31,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['newItem'])) {
     if (!empty($newItem)) {
         $shoppingList->addItem($newItem);
     }
+    redirect();
 }
 
 // Handle removing an item
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['removeItem'])) {
     $removeItemId = intval($_GET['removeItem']);
     $shoppingList->deleteItem($removeItemId);
-    header("Location: index.php"); // Redirect to refresh the page
-    exit();
+    redirect();
 }
 
 // Handle update checked item(s)
@@ -44,13 +48,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['checkedItems'])) {
 
         $shoppingList->markItemAsChecked($checkedItem);
     }
-
-    header("Location: index.php"); // Redirect to refresh the page
-    exit();
+    redirect();
 }
 
 // Get the updated shopping list
 $items = $shoppingList->getItems();
+
+// Handle editing an item param
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['editItem'])) {
+    $editItemId = intval($_GET['editItem']);
+    foreach ($items as $item) {
+        if ($item->getId() === $editItemId) {
+
+            $item->setEditing(true);
+        } else {
+
+            $item->setEditing(false);
+        }
+    }
+}
+// Handle saving edited items
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['editedItems'])) {
+    $editedItems = $_POST['editedItems'];
+    foreach ($editedItems as $itemId => $newName) {
+        if (!empty($newName)) {
+            $shoppingList->editItem(intval($itemId), $newName);
+        }
+    }
+    redirect();
+}
+
+$buttonText = 'Update Checked Items';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -79,14 +107,21 @@ $items = $shoppingList->getItems();
                     <label>
                         <input type="checkbox" name="checkedItems[]" value="<?php echo $item->getId(); ?>"
                             <?php echo $item->isChecked() ? 'checked' : ''; ?>>
-                        <?php echo $item->getName(); ?>
+                        <?php if ($item->isEditing()) : ?>
+                            <input type="text" name="editedItems[<?php echo $item->getId(); ?>]" value="<?php echo $item->getName(); ?>"/>
+                        <?php else: ?>
+                            <?php echo $item->getName(); ?>
+                        <?php endif; ?>
                     </label>
-                    <a href="?removeItem=<?php echo $item->getId(); ?>">Remove</a> | <a
+                    <a href="?removeItem=<?php echo $item->getId(); ?>">Remove</a>
+                    <?php if (!$item->isEditing()): ?> | <a
                             href="?editItem=<?php echo $item->getId(); ?>">Edit</a>
+                    <?php endif; ?>
                 </li>
             <?php endforeach; ?>
         </ul>
-        <button type="submit">Update Checked Items</button>
+
+            <button type="submit"><?=$buttonText?></button>
     </form>
 <?php endif; ?>
 </body>

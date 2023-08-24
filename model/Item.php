@@ -8,6 +8,8 @@ class Item
     private string $name;
     private bool $checked;
 
+    private $editing = false;
+
     public function __construct($id, $name)
     {
         $this->name = $name;
@@ -37,5 +39,14 @@ class Item
     public function uncheckItem(): void
     {
         $this->checked = false;
+    }
+
+    public function isEditing(): bool
+    {
+        return $this->editing;
+    }
+    public function setEditing($editing): void
+    {
+        $this->editing = $editing;
     }
 }

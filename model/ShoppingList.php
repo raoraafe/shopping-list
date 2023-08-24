@@ -72,6 +72,11 @@ class ShoppingList
             if ($row['checked']) {
                 $item->checkItem();
             }
+
+            if ($item->isEditing()) {
+                $item->setEditing(false);
+            }
+
             $items[] = $item;
         }
 
