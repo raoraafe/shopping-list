@@ -40,11 +40,12 @@ class Item
     {
         $this->checked = false;
     }
-
+    //state of current item for edit
     public function isEditing(): bool
     {
         return $this->editing;
     }
+    //init edit mode for an item
     public function setEditing($editing): void
     {
         $this->editing = $editing;
