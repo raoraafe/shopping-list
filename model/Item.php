@@ -11,7 +11,8 @@ class Item
     public function __construct(string $name, int $id = null, bool $checked = false)
     {
         $this->name = $name;
-        $this->id = $id;
+        if ($id != null)
+            $this->id = $id;
         $this->checked = $checked;
     }
 

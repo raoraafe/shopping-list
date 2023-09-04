@@ -47,7 +47,6 @@ class ItemRepository
             $stmt = $this->pdo->prepare("DELETE FROM items WHERE id = :id");
             $stmt->bindParam(':id', $itemId, PDO::PARAM_INT);
             $stmt->execute();
-            
             // Check if any rows were affected
             if ($stmt->rowCount() > 0) {
                 return [
