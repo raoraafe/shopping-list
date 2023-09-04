@@ -4,23 +4,22 @@ namespace model;
 
 class Item
 {
-    private int $itemId;
+    private int $id;
     private string $name;
     private bool $checked;
 
-    private $editing = false;
-
-    public function __construct($id, $name)
+    public function __construct(string $name, int $id = null, bool $checked = false)
     {
         $this->name = $name;
-        $this->checked = false;
-        $this->itemId = $id;
+        $this->id = $id;
+        $this->checked = $checked;
     }
 
     public function getId(): int
     {
-        return $this->itemId;
+        return $this->id;
     }
+
     public function getName(): string
     {
         return $this->name;
@@ -39,15 +38,5 @@ class Item
     public function uncheckItem(): void
     {
         $this->checked = false;
-    }
-    //state of current item for edit
-    public function isEditing(): bool
-    {
-        return $this->editing;
-    }
-    //init edit mode for an item
-    public function setEditing($editing): void
-    {
-        $this->editing = $editing;
     }
 }

@@ -9,27 +9,41 @@ spl_autoload_register(function ($class) {
     }
     $relativeClass = substr($class, $len);
     $file = $baseDir.str_replace('\\', '/', $relativeClass).'.php';
-    //echo $file;exit;
+
     if (file_exists($file)) {
         require $file;
     }
 });
 
-function redirect() {
-    header("Location: index.php"); // Redirect to refresh the page
-    exit();
-}
+require 'helper/helper.php';
 
 // Instantiate the shopping list with database credentials
-use model\ShoppingList;
+use model\ItemRepository;
+use model\ShoppingListRepository;
 
-$shoppingList = new ShoppingList('localhost', 'root', '', 'shopping_list');
+// Create a PDO instance and configure it as needed
+$dsn = 'mysql:host=localhost;dbname=shopping_list';
+$username = 'root';
+$password = '';
+
+try {
+    $pdo = new PDO($dsn, $username, $password);
+    // Set PDO to throw exceptions on errors
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+} catch (PDOException $e) {
+    die('Database connection failed: ' . $e->getMessage());
+}
+
+$buttonText = 'Update Checked Items';
+// Create instances of repositories and pass the PDO instance
+$itemRepository = new ItemRepository($pdo);
+$shoppingListRepository = new ShoppingListRepository($itemRepository);
 
 // Handle adding a new item
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['newItem'])) {
     $newItem = $_POST['newItem'];
     if (!empty($newItem)) {
-        $shoppingList->addItem($newItem);
+        $shoppingListRepository->addItemToShoppingList($newItem);
     }
     redirect();
 }
@@ -37,48 +51,58 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['newItem'])) {
 // Handle removing an item
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['removeItem'])) {
     $removeItemId = intval($_GET['removeItem']);
-    $shoppingList->deleteItem($removeItemId);
+    $shoppingListRepository->deleteItemFromShoppingList($removeItemId);
     redirect();
 }
 
 // Handle update checked item(s)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['checkedItems'])) {
-    $checkedItems = $_POST['checkedItems'];
-    foreach ($checkedItems as $checkedItem) {
 
-        $shoppingList->markItemAsChecked($checkedItem);
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['checkedItems'])) {
+
+    $checkedItems = $_POST['checkedItems']; //array of items checked
+
+    foreach ($checkedItems as $itemId) {
+
+        $checked = 1;
+
+        $shoppingListRepository->markItemAsChecked($itemId, $checked);
     }
     redirect();
 }
 
 // Get the updated shopping list
-$items = $shoppingList->getItems();
-
+$items = $shoppingListRepository->getShoppingList();
+$editingItems = [];
 // Handle editing an item param
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['editItem'])) {
+
     $editItemId = intval($_GET['editItem']);
-    foreach ($items as $item) {
+
+    foreach ($items['data'] as $item) {
+
         if ($item->getId() === $editItemId) {
-
-            $item->setEditing(true);
+            //edit mode enabled for the item
+            $editingItems[$item->getId()] = true;
+            $buttonText = 'Update';
         } else {
-
-            $item->setEditing(false);
+            //remove item from array for edit
+            unset($editingItems[$item->getId()]);
         }
     }
 }
 // Handle saving edited items
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['editedItems'])) {
-    $editedItems = $_POST['editedItems'];
+
+    $editedItems = $_POST['editItem'];
     foreach ($editedItems as $itemId => $newName) {
         if (!empty($newName)) {
-            $shoppingList->editItem(intval($itemId), $newName);
+            $shoppingListRepository->editItemInShoppingList(intval($itemId), $newName);
         }
     }
     redirect();
 }
 
-$buttonText = 'Update Checked Items';
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -96,27 +120,31 @@ $buttonText = 'Update Checked Items';
     <button type="submit">Add Item</button>
 </form>
 
-<?php if (!empty($items)): ?>
+<?php if (!empty($items['data'])): ?>
 
     <!-- update for checked item form -->
     <form method="POST">
         <!-- Display the shopping list -->
         <ul>
-            <?php foreach ($items as $item): ?>
+            <?php foreach ($items['data'] as $item): ?>
                 <li>
+
                     <label>
+
                         <input type="checkbox" name="checkedItems[]" value="<?php echo $item->getId(); ?>"
                             <?php echo $item->isChecked() ? 'checked' : ''; ?>>
-                        <?php if ($item->isEditing()) : ?>
+                        <?php if (isset($editingItems[$item->getId()])) : ?>
                             <input type="text" name="editedItems[<?php echo $item->getId(); ?>]" value="<?php echo $item->getName(); ?>"/>
                         <?php else: ?>
                             <?php echo $item->getName(); ?>
                         <?php endif; ?>
+
                     </label>
                     <a href="?removeItem=<?php echo $item->getId(); ?>">Remove</a>
-                    <?php if (!$item->isEditing()): ?> | <a
+                    <?php if (!isset($editingItems[$item->getId()])): ?> | <a
                             href="?editItem=<?php echo $item->getId(); ?>">Edit</a>
                     <?php endif; ?>
+
                 </li>
             <?php endforeach; ?>
         </ul>
